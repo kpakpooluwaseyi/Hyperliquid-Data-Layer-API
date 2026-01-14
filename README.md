@@ -79,6 +79,11 @@ This data layer gives you access to everything Wall Street kept hidden:
 | **Live Prices** | Real-time tick data for all major coins |
 | **Blockchain Events** | Transfers, swaps, deposits - as they happen |
 | **All Depositors** | Canonical list of every address that ever bridged to Hyperliquid |
+| **Market Data (NEW!)** | All 224 prices + funding + OI - NO RATE LIMITS |
+| **Orderbooks** | Full L2 orderbook (~20 levels) - replaces Hyperliquid's rate-limited call |
+| **Account State** | Full account data for any wallet - NO RATE LIMITS |
+| **Fills (NEW!)** | Trade fills in Hyperliquid-compatible format - drop-in replacement |
+| **Candles (NEW!)** | OHLCV candles (1m, 5m, 15m, 1h, 4h, 1d) for BTC/ETH/SOL/HYPE/XRP |
 
 This is the data that used to cost hedge funds millions of dollars. Now it's accessible to anyone with an API key.
 
@@ -108,6 +113,7 @@ python examples/12_hlp_positions.py       # See HLP's $210M positions
 python examples/14_multi_liquidations.py  # All exchanges: Hyperliquid, Binance, Bybit, OKX
 python examples/15_buyers.py              # $5k+ buyers on HYPE/SOL/XRP/ETH
 python examples/16_depositors.py          # All Hyperliquid depositors
+python examples/19_market_data.py         # Prices, orderbooks, accounts - NO RATE LIMITS!
 ```
 
 That's it. You're now seeing what Wall Street sees.
@@ -138,8 +144,119 @@ Every example is a standalone Python script with beautiful terminal output. Run 
 | `16_depositors.py` | All Hyperliquid depositors - canonical list of bridged addresses |
 | `17_hlp_sentiment.py` | THE BIG ONE! HLP z-scores showing retail positioning |
 | `18_hlp_analytics.py` | HLP liquidators, market maker, timing, correlation |
+| `19_market_data.py` | **NEW!** All prices, orderbooks, account state - NO RATE LIMITS |
 
 See the [examples/README.md](examples/README.md) for the API reference, or visit **https://moondev.com/docs** for the full documentation.
+
+---
+
+## Market Data API (NO RATE LIMITS!)
+
+These endpoints replace Hyperliquid's rate-limited API calls. All requests go through Moon Dev's node - no more 429 errors!
+
+### Endpoints
+
+| Endpoint | Replaces | Description |
+|----------|----------|-------------|
+| `GET /api/prices` | `metaAndAssetCtxs` | All 224 coin prices + funding rates + open interest |
+| `GET /api/price/{coin}` | - | Quick single-coin price with bid/ask/spread |
+| `GET /api/orderbook/{coin}` | `l2Book` | Full L2 orderbook (~20 levels each side) |
+| `GET /api/account/{address}` | `clearinghouseState` | Full account state for any wallet |
+| `GET /api/fills/{address}` | `userFills` | Trade fills in Hyperliquid-compatible format |
+| `GET /api/candles/{coin}` | `candleSnapshot` | OHLCV candles (1m, 5m, 15m, 1h, 4h, 1d) |
+
+### Candles API
+
+Get OHLCV candles for backtesting and analysis. Available for: **BTC, ETH, SOL, HYPE, XRP**
+
+**Parameters:**
+
+| Param | Description | Example |
+|-------|-------------|---------|
+| `interval` | Candle size | `1m`, `5m`, `15m`, `1h`, `4h`, `1d` |
+| `startTime` | Start timestamp (Unix ms) | `1736121600000` |
+| `endTime` | End timestamp (Unix ms) | `1736208000000` |
+
+**Data Availability:**
+
+| Interval | Rolling Window | Use Case |
+|----------|---------------|----------|
+| `1m` | ~1 hour | Scalping, micro-movements |
+| `5m` | ~6 hours | Short-term trading |
+| `15m` | ~1 day | Intraday analysis |
+| `1h` | ~7 days | Swing trading |
+| `4h` | ~8 days | Position trading |
+| `1d` | ~8 days | Long-term analysis |
+
+**Examples:**
+
+```python
+from api import MoonDevAPI
+
+api = MoonDevAPI()
+
+# Get default candles (rolling window)
+candles = api.get_candles("BTC", interval="1h")
+
+# Get ALL available 1-minute candles
+candles = api.get_candles("BTC", interval="1m", start_time=0)
+
+# Get specific time range
+import time
+end = int(time.time() * 1000)  # now
+start = end - (200 * 5 * 60 * 1000)  # 200 bars back
+candles = api.get_candles("BTC", interval="5m", start_time=start, end_time=end)
+```
+
+**Response Format (Hyperliquid-compatible):**
+```json
+{
+  "t": 1736121600000,  // Open time (ms)
+  "T": 1736125199999,  // Close time (ms)
+  "s": "BTC",          // Symbol
+  "i": "1h",           // Interval
+  "o": "95000.5",      // Open
+  "h": "95200.0",      // High
+  "l": "94800.0",      // Low
+  "c": "95100.0",      // Close
+  "v": "0",            // Volume
+  "n": 450             // Number of ticks
+}
+```
+
+### Python Usage
+
+```python
+from api import MoonDevAPI
+
+api = MoonDevAPI()
+
+# All 224 prices at once
+prices = api.get_prices()
+print(f"BTC: ${prices['prices']['BTC']}")
+
+# Quick single price
+btc = api.get_price("BTC")
+print(f"Spread: {btc['spread_bps']} bps")
+
+# Full orderbook
+book = api.get_orderbook("BTC")
+print(f"Best bid: {book['best_bid']}, Best ask: {book['best_ask']}")
+
+# Any wallet's account
+account = api.get_account("0x...")
+print(f"Account value: ${account['marginSummary']['accountValue']}")
+
+# Trade fills
+fills = api.get_fills("0x...", limit=100)
+for fill in fills[:5]:
+    print(f"{fill['coin']} {fill['side']} @ {fill['px']}")
+
+# OHLCV candles
+candles = api.get_candles("BTC", interval="1m")
+for c in candles[-5:]:
+    print(f"O:{c['o']} H:{c['h']} L:{c['l']} C:{c['c']}")
+```
 
 ---
 

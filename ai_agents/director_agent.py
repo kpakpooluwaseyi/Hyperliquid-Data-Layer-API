@@ -108,6 +108,32 @@ AVAILABLE HYPERLIQUID API ENDPOINTS (Moon Dev's Data Layer):
 • get_depositors() - All addresses that ever bridged to Hyperliquid
 • get_whale_addresses() - Plain text list of whale addresses
 
+== MARKET DATA (NO RATE LIMITS!) ==
+• get_prices() - ALL 224 coin prices + funding rates + open interest
+  Replaces Hyperliquid's rate-limited metaAndAssetCtxs call
+  Returns: prices dict, funding_rates dict, open_interest dict
+
+• get_price(coin) - Quick price for single coin (BTC, ETH, SOL, etc.)
+  Returns: best_bid, best_ask, mid_price, spread, spread_bps
+
+• get_orderbook(coin) - Full L2 orderbook (~20 levels each side)
+  Replaces Hyperliquid's rate-limited l2Book call
+  Returns: levels (bids/asks), best_bid, best_ask, mid_price, spread_bps
+
+• get_account(address) - Full account state for ANY wallet
+  Replaces Hyperliquid's rate-limited clearinghouseState call
+  Returns: marginSummary, assetPositions, withdrawable
+
+• get_fills(address, limit) - Trade fills in Hyperliquid-compatible format
+  Replaces Hyperliquid's rate-limited userFills call
+  Returns: Array of fills with coin, side, sz, px, time, closedPnl, dir, etc.
+  Default limit: 100
+
+• get_candles(coin, interval) - OHLCV candles from tick data
+  Symbols: BTC, ETH, HYPE, SOL, XRP
+  Intervals: 1m, 5m, 15m, 1h, 4h, 1d
+  Returns: Array of candles with t, o, h, l, c, v, n (Hyperliquid format)
+
 == BLOCKCHAIN DATA ==
 • get_events() - Real-time blockchain events (transfers, swaps, deposits)
 • get_contracts() - Contract registry with metadata

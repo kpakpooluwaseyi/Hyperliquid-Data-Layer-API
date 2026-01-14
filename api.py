@@ -56,6 +56,14 @@ MOON DEV USER API (from local node - FAST!):
 - /api/user/{address}/positions         - Get positions via Moon Dev API
 - /api/user/{address}/fills             - Get historical fills (limit: 100-2000, -1 for all)
 
+MARKET DATA (replaces Hyperliquid rate-limited calls!):
+- /api/prices                           - All 224 coin prices + funding rates + open interest
+- /api/price/{coin}                     - Quick price for single coin (best bid/ask/mid/spread)
+- /api/orderbook/{coin}                 - Full L2 orderbook (~20 levels each side)
+- /api/account/{address}                - Full account state (positions, margin, withdrawable)
+- /api/fills/{address}                  - Trade fills in Hyperliquid-compatible format
+- /api/candles/{coin}                   - OHLCV candles (1m, 5m, 15m, 1h, 4h, 1d)
+
 HLP (HYPERLIQUIDITY PROVIDER) DATA:
 - /api/hlp/positions                    - All 7 HLP strategy positions + combined net exposure
                                           (optional: ?include_strategies=false for summary only)
@@ -311,6 +319,168 @@ class MoonDevAPI:
         """
         params = f"?limit={limit}" if limit != 100 else ""
         response = self._get(f"/api/user/{address}/fills{params}")
+        return response.json()
+
+    # ==================== MARKET DATA (NO RATE LIMITS!) ====================
+    def get_prices(self):
+        """
+        Get all coin prices, funding rates, and open interest.
+
+        This replaces Hyperliquid's rate-limited metaAndAssetCtxs call.
+        No rate limits - goes through Moon Dev's node!
+
+        Returns:
+            dict with:
+                - timestamp: When data was fetched
+                - count: Number of coins (224)
+                - prices: Dict of coin -> price (e.g., {"BTC": "93200.0", "ETH": "3175.0"})
+                - funding_rates: Dict of coin -> funding rate
+                - open_interest: Dict of coin -> open interest
+        """
+        response = self._get("/api/prices")
+        return response.json()
+
+    def get_price(self, coin):
+        """
+        Get quick price for a single coin.
+
+        Args:
+            coin: Coin symbol (e.g., "BTC", "ETH", "SOL")
+
+        Returns:
+            dict with:
+                - coin: Symbol
+                - timestamp: When data was fetched
+                - best_bid: Best bid price
+                - best_ask: Best ask price
+                - best_bid_size: Size at best bid
+                - best_ask_size: Size at best ask
+                - mid_price: (bid + ask) / 2
+                - spread: ask - bid
+                - spread_bps: Spread in basis points
+        """
+        response = self._get(f"/api/price/{coin}")
+        return response.json()
+
+    def get_orderbook(self, coin):
+        """
+        Get full L2 orderbook for a coin (~20 levels each side).
+
+        This replaces Hyperliquid's rate-limited l2Book call.
+        No rate limits - goes through Moon Dev's node!
+
+        Args:
+            coin: Coin symbol (e.g., "BTC", "ETH", "SOL")
+
+        Returns:
+            dict with:
+                - coin: Symbol
+                - timestamp: When data was fetched
+                - levels: [[bids], [asks]] - bids sorted high->low, asks sorted low->high
+                  Each level: {"px": price, "sz": size, "n": order_count}
+                - best_bid: Best bid price
+                - best_ask: Best ask price
+                - mid_price: (bid + ask) / 2
+                - spread: ask - bid
+                - spread_bps: Spread in basis points
+                - bid_depth: Number of bid levels
+                - ask_depth: Number of ask levels
+        """
+        response = self._get(f"/api/orderbook/{coin}")
+        return response.json()
+
+    def get_account(self, address):
+        """
+        Get full account state for any Hyperliquid wallet.
+
+        This replaces Hyperliquid's rate-limited clearinghouseState call.
+        No rate limits - goes through Moon Dev's node!
+
+        Args:
+            address: Wallet address (e.g., "0x...")
+
+        Returns:
+            dict with:
+                - address: Wallet address
+                - timestamp: When data was fetched
+                - marginSummary: Account value, total position, margin used
+                - crossMarginSummary: Cross margin details
+                - assetPositions: List of all open positions with full details
+                - withdrawable: Available to withdraw
+        """
+        response = self._get(f"/api/account/{address}")
+        return response.json()
+
+    def get_fills(self, address, limit=100):
+        """
+        Get trade fills for any wallet in Hyperliquid-compatible format.
+
+        This is the DROP-IN REPLACEMENT for Hyperliquid's userFills call.
+        Uses Moon Dev's local node - faster and no rate limits!
+
+        Args:
+            address: Wallet address (e.g., "0x...")
+            limit: Number of fills to return (default: 100)
+
+        Returns:
+            list of fill objects in Hyperliquid format:
+            [
+                {
+                    "tid": 293951512222,      # Trade ID
+                    "time": 1768392000752,    # Timestamp (ms)
+                    "coin": "BTC",            # Symbol
+                    "side": "B" or "A",       # B=Buy, A=Sell (Ask)
+                    "px": "94000.0",          # Price
+                    "sz": "0.1",              # Size
+                    "closedPnl": "100.50",    # Realized PnL
+                    "dir": "Open Long",       # Direction description
+                    "crossed": false,         # Whether crossed the spread
+                    "fee": "1.5",             # Fee paid
+                    "oid": 293951512222       # Order ID
+                }
+            ]
+        """
+        params = f"?limit={limit}" if limit != 100 else ""
+        response = self._get(f"/api/fills/{address}{params}")
+        return response.json()
+
+    def get_candles(self, coin, interval="1h", start_time=None, end_time=None):
+        """
+        Get OHLCV candles from tick data in Hyperliquid-compatible format.
+
+        Available for: BTC, ETH, HYPE, SOL, XRP
+        Data available: ~8 days (from Jan 6 onwards)
+
+        Args:
+            coin: Symbol (BTC, ETH, HYPE, SOL, XRP)
+            interval: Candle interval (1m, 5m, 15m, 1h, 4h, 1d)
+            start_time: Start timestamp in ms (optional)
+            end_time: End timestamp in ms (optional)
+
+        Returns:
+            list of candle objects:
+            [
+                {
+                    "t": 1767787200000,    # Open time (ms)
+                    "T": 1767790799999,    # Close time (ms)
+                    "s": "BTC",            # Symbol
+                    "i": "1h",             # Interval
+                    "o": "92194.5",        # Open price
+                    "h": "92232.5",        # High price
+                    "l": "92049.5",        # Low price
+                    "c": "92056.5",        # Close price
+                    "v": "0",              # Volume (from ticks, may be 0)
+                    "n": 239               # Number of price updates
+                }
+            ]
+        """
+        params = [f"interval={interval}"]
+        if start_time is not None:
+            params.append(f"startTime={start_time}")
+        if end_time is not None:
+            params.append(f"endTime={end_time}")
+        query = "?" + "&".join(params) if params else ""
+        response = self._get(f"/api/candles/{coin}{query}")
         return response.json()
 
     # ==================== HLP (HYPERLIQUIDITY PROVIDER) ====================
@@ -853,9 +1023,101 @@ def test_all():
         print(f"⚠️  User fills: {e}")
     print()
 
-    # ==================== 12. HLP (HYPERLIQUIDITY PROVIDER) ====================
+    # ==================== 12. MARKET DATA (NO RATE LIMITS!) ====================
     print("=" * 60)
-    print("🏦 12. HLP (HYPERLIQUIDITY PROVIDER)")
+    print("📈 12. MARKET DATA (NO RATE LIMITS!)")
+    print("=" * 60)
+
+    # All Prices
+    try:
+        prices_data = api.get_prices()
+        count = prices_data.get('count', 0)
+        prices = prices_data.get('prices', {})
+        funding = prices_data.get('funding_rates', {})
+        oi = prices_data.get('open_interest', {})
+        print(f"✅ All Prices: {count} coins")
+        print(f"   BTC: ${prices.get('BTC', 'N/A')} | Funding: {funding.get('BTC', 'N/A')} | OI: {oi.get('BTC', 'N/A')}")
+        print(f"   ETH: ${prices.get('ETH', 'N/A')} | Funding: {funding.get('ETH', 'N/A')}")
+        print(f"   SOL: ${prices.get('SOL', 'N/A')} | Funding: {funding.get('SOL', 'N/A')}")
+    except Exception as e:
+        print(f"⚠️  All prices: {e}")
+
+    # Quick Price
+    try:
+        price_data = api.get_price("BTC")
+        print(f"✅ Quick Price (BTC):")
+        print(f"   Best Bid: ${price_data.get('best_bid', 'N/A')}")
+        print(f"   Best Ask: ${price_data.get('best_ask', 'N/A')}")
+        print(f"   Mid Price: ${price_data.get('mid_price', 'N/A')}")
+        print(f"   Spread: {price_data.get('spread_bps', 'N/A')} bps")
+    except Exception as e:
+        print(f"⚠️  Quick price: {e}")
+
+    # Orderbook
+    try:
+        ob_data = api.get_orderbook("ETH")
+        levels = ob_data.get('levels', [[], []])
+        print(f"✅ Orderbook (ETH):")
+        print(f"   Best Bid: ${ob_data.get('best_bid', 'N/A')} | Best Ask: ${ob_data.get('best_ask', 'N/A')}")
+        print(f"   Spread: {ob_data.get('spread_bps', 'N/A')} bps")
+        print(f"   Depth: {len(levels[0])} bids, {len(levels[1])} asks")
+        if levels[0]:
+            top_bid = levels[0][0]
+            print(f"   Top Bid Level: ${top_bid.get('px', 'N/A')} x {top_bid.get('sz', 'N/A')} ({top_bid.get('n', 'N/A')} orders)")
+    except Exception as e:
+        print(f"⚠️  Orderbook: {e}")
+
+    # Account State
+    try:
+        test_address = "0x010461c14e146ac35fe42271bdc1134ee31c703a"
+        account_data = api.get_account(test_address)
+        margin = account_data.get('marginSummary', {})
+        positions = account_data.get('assetPositions', [])
+        print(f"✅ Account State ({test_address[:10]}...):")
+        print(f"   Account Value: ${float(margin.get('accountValue', 0)):,.2f}")
+        print(f"   Total Position: ${float(margin.get('totalNtlPos', 0)):,.2f}")
+        print(f"   Margin Used: ${float(margin.get('totalMarginUsed', 0)):,.2f}")
+        print(f"   Positions: {len(positions)}")
+        print(f"   Withdrawable: ${float(account_data.get('withdrawable', 0)):,.2f}")
+    except Exception as e:
+        print(f"⚠️  Account state: {e}")
+
+    # Fills (Hyperliquid-compatible)
+    try:
+        test_address = "0x010461c14e146ac35fe42271bdc1134ee31c703a"
+        fills = api.get_fills(test_address, limit=5)
+        print(f"✅ Fills ({test_address[:10]}...): {len(fills)} fills")
+        if fills:
+            fill = fills[0]
+            side = "BUY" if fill.get('side') == 'B' else "SELL"
+            print(f"   Latest: {fill.get('coin')} {side} {fill.get('sz')} @ ${fill.get('px')} | PnL: ${fill.get('closedPnl')}")
+    except Exception as e:
+        print(f"⚠️  Fills: {e}")
+
+    # Candles (OHLCV)
+    try:
+        candles = api.get_candles("BTC", interval="1h")
+        print(f"✅ Candles (BTC 1h): {len(candles)} candles")
+        if candles:
+            latest = candles[-1]
+            print(f"   Latest: O:${latest.get('o')} H:${latest.get('h')} L:${latest.get('l')} C:${latest.get('c')}")
+    except Exception as e:
+        print(f"⚠️  Candles: {e}")
+
+    # Test all candle symbols
+    for symbol in ["ETH", "SOL", "HYPE", "XRP"]:
+        try:
+            candles = api.get_candles(symbol, interval="1h")
+            if candles:
+                print(f"   ✅ {symbol}: {len(candles)} candles, close: ${candles[-1].get('c')}")
+        except Exception as e:
+            print(f"   ⚠️  {symbol}: {e}")
+
+    print()
+
+    # ==================== 13. HLP (HYPERLIQUIDITY PROVIDER) ====================
+    print("=" * 60)
+    print("🏦 13. HLP (HYPERLIQUIDITY PROVIDER)")
     print("=" * 60)
 
     # HLP Positions
@@ -937,9 +1199,9 @@ def test_all():
 
     print()
 
-    # ==================== 13. MULTI-EXCHANGE LIQUIDATIONS ====================
+    # ==================== 14. MULTI-EXCHANGE LIQUIDATIONS ====================
     print("=" * 60)
-    print("🔥 13. MULTI-EXCHANGE LIQUIDATIONS")
+    print("🔥 14. MULTI-EXCHANGE LIQUIDATIONS")
     print("=" * 60)
 
     # Combined All Exchange Stats
