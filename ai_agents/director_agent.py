@@ -99,12 +99,13 @@ AVAILABLE HYPERLIQUID API ENDPOINTS (Moon Dev's Data Layer):
 • get_trades() - Recent 500 trades (real-time)
 • get_large_trades() - Large trades >$100k (24h)
 
-== TICK DATA ==
+== TICK DATA (80 SYMBOLS!) ==
 • get_tick_latest() - Current prices for all symbols
 • get_tick_stats() - Collection stats
-• get_ticks(symbol, timeframe) - Historical ticks
-  Symbols: btc, eth, hype, sol, xrp
-  Timeframes: 10m, 1h, 4h, 24h, 7d
+• get_ticks(symbol, duration, limit) - Historical ticks for ANY of 80 symbols
+  Symbols: BTC, ETH, SOL, DOGE, FARTCOIN, TRUMP, PUMP, and 73 more!
+  Duration: 10m, 1h, 4h, 24h, 7d
+  Optional: startTime, endTime for custom ranges
 
 == USER DATA (ANY Hyperliquid wallet!) ==
 • get_user_positions(address) - Positions for ANY wallet address
@@ -137,8 +138,13 @@ AVAILABLE HYPERLIQUID API ENDPOINTS (Moon Dev's Data Layer):
   Returns: Array of fills with coin, side, sz, px, time, closedPnl, dir, etc.
   Default limit: 100
 
-• get_candles(coin, interval) - OHLCV candles from tick data
-  Symbols: BTC, ETH, HYPE, SOL, XRP
+• get_candle_symbols() - List all 80 tracked symbols available for candles/ticks
+  Returns: symbols list, count, volume_threshold ($750k), intervals
+
+• get_candles(coin, interval) - OHLCV candles for ANY of 80 symbols!
+  Majors: BTC, ETH, SOL, XRP, DOGE, LTC, ADA, DOT, LINK, AVAX, BNB...
+  DeFi: AAVE, UNI, CRV, LDO, PENDLE, JUP, MORPHO, ONDO, ENA...
+  Memes: HYPE, FARTCOIN, PUMP, WIF, POPCAT, PENGU, TRUMP...
   Intervals: 1m, 5m, 15m, 1h, 4h, 1d
   Returns: Array of candles with t, o, h, l, c, v, n (Hyperliquid format)
 

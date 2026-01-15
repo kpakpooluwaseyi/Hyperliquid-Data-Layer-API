@@ -84,7 +84,8 @@ This data layer gives you access to everything Wall Street kept hidden:
 | **Orderbooks** | Full L2 orderbook (~20 levels) - replaces Hyperliquid's rate-limited call |
 | **Account State** | Full account data for any wallet - NO RATE LIMITS |
 | **Fills (NEW!)** | Trade fills in Hyperliquid-compatible format - drop-in replacement |
-| **Candles (NEW!)** | OHLCV candles (1m, 5m, 15m, 1h, 4h, 1d) for BTC/ETH/SOL/HYPE/XRP |
+| **Candles (80 symbols!)** | OHLCV candles (1m-1d) for 80 symbols: majors, DeFi, memes (FARTCOIN, TRUMP...) |
+| **Tick Data (80 symbols!)** | Raw price ticks with custom time windows for any tracked symbol |
 
 This is the data that used to cost hedge funds millions of dollars. Now it's accessible to anyone with an API key.
 
@@ -165,63 +166,90 @@ These endpoints replace Hyperliquid's rate-limited API calls. All requests go th
 | `GET /api/account/{address}` | `clearinghouseState` | Full account state for any wallet |
 | `GET /api/fills/{address}` | `userFills` | Trade fills in Hyperliquid-compatible format |
 | `GET /api/candles/{coin}` | `candleSnapshot` | OHLCV candles (1m, 5m, 15m, 1h, 4h, 1d) |
+| `GET /api/candles/symbols` | - | List all 80 tracked symbols |
+| `GET /api/ticks/{symbol}` | - | Raw tick data with custom time windows |
 
-### Candles API
+### Symbol Discovery
 
-Get OHLCV candles for backtesting and analysis. Available for: **BTC, ETH, SOL, HYPE, XRP**
+**80 symbols tracked** based on $750k+ daily volume:
+
+```python
+# Get all available symbols
+symbols = api.get_candle_symbols()
+print(f"{symbols['count']} symbols available")
+print(symbols['symbols'])  # ['AAVE', 'ACE', 'ADA', 'APT', 'ARB', ...]
+```
+
+**Categories:**
+- **Major:** BTC, ETH, SOL, XRP, DOGE, LTC, BCH, ADA, DOT, LINK, AVAX, BNB, TRX, XMR, XLM
+- **DeFi:** AAVE, UNI, CRV, LDO, PENDLE, JUP, MORPHO, ONDO, ENA
+- **L2/Alt L1:** ARB, OP, SUI, SEI, APT, NEAR, TON, ICP, TIA, STRK, MOVE, BERA, HBAR, MNT
+- **Memes:** HYPE, FARTCOIN, PUMP, WIF, POPCAT, PENGU, kPEPE, kBONK, kSHIB, TRUMP
+
+### Tick Data API
+
+Get raw price ticks for any of 80 symbols:
+
+```python
+# FARTCOIN ticks for last 10 minutes
+ticks = api.get_ticks("FARTCOIN", duration="10m")
+print(f"{ticks['tick_count']} ticks, latest: ${ticks['latest_price']}")
+
+# TRUMP ticks for last hour
+ticks = api.get_ticks("TRUMP", duration="1h")
+
+# Custom time range (Unix ms)
+ticks = api.get_ticks("DOGE", start_time=1768400000000, end_time=1768486000000)
+```
 
 **Parameters:**
 
-| Param | Description | Example |
-|-------|-------------|---------|
-| `interval` | Candle size | `1m`, `5m`, `15m`, `1h`, `4h`, `1d` |
-| `startTime` | Start timestamp (Unix ms) | `1736121600000` |
-| `endTime` | End timestamp (Unix ms) | `1736208000000` |
+| Param | Default | Description |
+|-------|---------|-------------|
+| `duration` | `1h` | Time window: `10m`, `1h`, `4h`, `24h`, `7d` |
+| `limit` | `10000` | Max ticks to return |
+| `startTime` | - | Start time (Unix ms) |
+| `endTime` | - | End time (Unix ms) |
 
-**Data Availability:**
+### Candles API
 
-| Interval | Rolling Window | Use Case |
-|----------|---------------|----------|
-| `1m` | ~1 hour | Scalping, micro-movements |
-| `5m` | ~6 hours | Short-term trading |
-| `15m` | ~1 day | Intraday analysis |
-| `1h` | ~7 days | Swing trading |
-| `4h` | ~8 days | Position trading |
-| `1d` | ~8 days | Long-term analysis |
-
-**Examples:**
+Get OHLCV candles for any of **80 tracked symbols**:
 
 ```python
-from api import MoonDevAPI
+# BTC 5-minute candles
+candles = api.get_candles("BTC", interval="5m")
 
-api = MoonDevAPI()
+# FARTCOIN 1-minute candles
+candles = api.get_candles("FARTCOIN", interval="1m")
 
-# Get default candles (rolling window)
-candles = api.get_candles("BTC", interval="1h")
+# TRUMP hourly candles
+candles = api.get_candles("TRUMP", interval="1h")
 
-# Get ALL available 1-minute candles
-candles = api.get_candles("BTC", interval="1m", start_time=0)
-
-# Get specific time range
-import time
-end = int(time.time() * 1000)  # now
-start = end - (200 * 5 * 60 * 1000)  # 200 bars back
-candles = api.get_candles("BTC", interval="5m", start_time=start, end_time=end)
+# Custom time range
+candles = api.get_candles("DOGE", interval="15m", start_time=0)  # All available
 ```
+
+**Parameters:**
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `interval` | `5m` | Candle size: `1m`, `5m`, `15m`, `1h`, `4h`, `1d` |
+| `startTime` | auto | Start timestamp (Unix ms) |
+| `endTime` | now | End timestamp (Unix ms) |
 
 **Response Format (Hyperliquid-compatible):**
 ```json
 {
   "t": 1736121600000,  // Open time (ms)
   "T": 1736125199999,  // Close time (ms)
-  "s": "BTC",          // Symbol
-  "i": "1h",           // Interval
-  "o": "95000.5",      // Open
-  "h": "95200.0",      // High
-  "l": "94800.0",      // Low
-  "c": "95100.0",      // Close
+  "s": "FARTCOIN",     // Symbol
+  "i": "5m",           // Interval
+  "o": "0.385",        // Open
+  "h": "0.390",        // High
+  "l": "0.380",        // Low
+  "c": "0.387",        // Close
   "v": "0",            // Volume
-  "n": 450             // Number of ticks
+  "n": 45              // Number of ticks
 }
 ```
 

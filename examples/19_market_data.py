@@ -10,7 +10,9 @@ These endpoints replace Hyperliquid's rate-limited API calls:
 - /api/orderbook/{coin} → replaces l2Book
 - /api/account/{addr}   → replaces clearinghouseState
 - /api/fills/{addr}     → replaces userFills (Hyperliquid-compatible format!)
-- /api/candles/{coin}   → OHLCV candles (1m, 5m, 15m, 1h, 4h, 1d)
+- /api/candles/symbols  → list all 80 tracked symbols
+- /api/candles/{coin}   → OHLCV candles for 80 symbols (1m-1d)
+- /api/ticks/{symbol}   → raw tick data for 80 symbols
 
 No more rate limits - all calls go through Moon Dev's node!
 """
@@ -255,8 +257,61 @@ def show_candles(api, coin="BTC", interval="1h"):
 
     # Show available intervals
     console.print("\n[yellow]Available intervals: 1m, 5m, 15m, 1h, 4h, 1d")
-    console.print("[yellow]Available symbols: BTC, ETH, HYPE, SOL, XRP")
-    console.print("[dim]   Data available: ~8 days (from Jan 6 onwards)")
+    console.print("[yellow]Use api.get_candle_symbols() to see all 80 available symbols!")
+
+
+def show_symbol_discovery(api):
+    """Display available symbols for candles/ticks"""
+    console.print(f"\n[bold cyan]🔍 SYMBOL DISCOVERY (80 Symbols!)[/bold cyan]")
+
+    data = api.get_candle_symbols()
+
+    console.print(f"\n[green]✅ {data.get('count', 0)} symbols tracked (>${data.get('volume_threshold', 0):,} daily volume)")
+    console.print(f"[dim]   Intervals: {', '.join(data.get('intervals', []))}")
+
+    symbols = data.get('symbols', [])
+
+    # Group into categories for display
+    majors = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'LTC', 'ADA', 'DOT', 'LINK', 'AVAX', 'BNB']
+    memes = ['HYPE', 'FARTCOIN', 'PUMP', 'WIF', 'POPCAT', 'PENGU', 'TRUMP']
+
+    console.print(f"\n[bold white]Major Coins:[/bold white] {', '.join([s for s in majors if s in symbols])}")
+    console.print(f"[bold magenta]Meme Coins:[/bold magenta] {', '.join([s for s in memes if s in symbols])}")
+    console.print(f"[dim]   ...and {len(symbols) - len(majors) - len(memes)} more (DeFi, L2s, etc.)")
+
+    console.print(f"\n[yellow]💡 TIP: Use api.get_candle_symbols() to get the full list!")
+
+
+def show_meme_candles(api, symbol="FARTCOIN"):
+    """Display candles for a meme coin"""
+    console.print(f"\n[bold magenta]🚀 MEME COIN CANDLES: {symbol}[/bold magenta]")
+
+    candles = api.get_candles(symbol, interval="5m")
+
+    console.print(f"\n[green]✅ Found {len(candles)} 5m candles for {symbol}")
+
+    if candles:
+        table = Table(title=f"{symbol} 5m Candles (Latest 10)", box=box.ROUNDED)
+        table.add_column("Time", width=12)
+        table.add_column("Open", justify="right", style="white", width=10)
+        table.add_column("High", justify="right", style="green", width=10)
+        table.add_column("Low", justify="right", style="red", width=10)
+        table.add_column("Close", justify="right", style="cyan", width=10)
+        table.add_column("Ticks", justify="right", width=6)
+
+        from datetime import datetime
+        for candle in candles[-10:]:
+            ts = candle.get('t', 0)
+            time_str = datetime.fromtimestamp(ts / 1000).strftime('%m/%d %H:%M') if ts else "N/A"
+            o = f"${float(candle.get('o', 0)):.4f}"
+            h = f"${float(candle.get('h', 0)):.4f}"
+            l = f"${float(candle.get('l', 0)):.4f}"
+            c = f"${float(candle.get('c', 0)):.4f}"
+            n = str(candle.get('n', 0))
+
+            table.add_row(time_str, o, h, l, c, n)
+
+        console.print(table)
 
 
 def show_migration_guide():
@@ -308,7 +363,9 @@ def main():
     show_fills(api, "0x010461c14e146ac35fe42271bdc1134ee31c703a")
     show_candles(api, "BTC", "1h")
     show_candles(api, "BTC", "1m")
-    show_candles(api, "ETH", "1m")
+    show_symbol_discovery(api)
+    show_meme_candles(api, "FARTCOIN")
+    show_meme_candles(api, "TRUMP")
     show_migration_guide()
 
     console.print("\n[bold green]🌙 Market Data Demo Complete! - Moon Dev 🚀[/bold green]")

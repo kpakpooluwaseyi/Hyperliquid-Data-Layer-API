@@ -191,15 +191,33 @@ class MoonDevAPI:
         response = self._get("/api/ticks/latest.json")
         return response.json()
 
-    def get_ticks(self, symbol="btc", timeframe="1h"):
+    def get_ticks(self, symbol="BTC", duration="1h", limit=10000, start_time=None, end_time=None):
         """
-        Get historical tick data for a symbol
+        Get historical tick data for any of 80 tracked symbols.
 
         Args:
-            symbol: btc, eth, hype, sol, xrp
-            timeframe: 10m, 1h, 4h, 24h, 7d
+            symbol: Any tracked symbol (BTC, ETH, SOL, DOGE, FARTCOIN, TRUMP, etc.)
+                   Use get_candle_symbols() to see all 80 available symbols
+            duration: Time window - 10m, 1h, 4h, 24h, 7d (default: 1h)
+            limit: Max ticks to return (default: 10000)
+            start_time: Start time in Unix ms (optional, overrides duration)
+            end_time: End time in Unix ms (optional)
+
+        Returns:
+            dict with:
+                - symbol: Symbol queried
+                - duration: Time window
+                - tick_count: Number of ticks returned
+                - latest_price: Most recent price
+                - ticks: List of tick objects [{t, p, dt}, ...]
         """
-        response = self._get(f"/api/ticks/{symbol}_{timeframe}.json")
+        params = [f"duration={duration}", f"limit={limit}"]
+        if start_time is not None:
+            params.append(f"startTime={start_time}")
+        if end_time is not None:
+            params.append(f"endTime={end_time}")
+        query = "?" + "&".join(params)
+        response = self._get(f"/api/ticks/{symbol.upper()}{query}")
         return response.json()
 
     # ==================== ORDER FLOW & TRADES ====================
@@ -444,16 +462,39 @@ class MoonDevAPI:
         response = self._get(f"/api/fills/{address}{params}")
         return response.json()
 
-    def get_candles(self, coin, interval="1h", start_time=None, end_time=None):
+    def get_candle_symbols(self):
         """
-        Get OHLCV candles from tick data in Hyperliquid-compatible format.
+        Get list of all 80 tracked symbols available for candles/ticks.
 
-        Available for: BTC, ETH, HYPE, SOL, XRP
-        Data available: ~8 days (from Jan 6 onwards)
+        Symbols are selected based on $750k+ daily volume.
+
+        Returns:
+            dict with:
+                - symbols: List of symbol strings (e.g., ["AAVE", "BTC", "DOGE", ...])
+                - count: Number of tracked symbols (80)
+                - volume_threshold: Minimum daily volume for inclusion ($750k)
+                - intervals: Available candle intervals (1m, 5m, 15m, 1h, 4h, 1d)
+                - symbol_details: Dict with per-symbol metadata
+        """
+        response = self._get("/api/candles/symbols")
+        return response.json()
+
+    def get_candles(self, coin, interval="5m", start_time=None, end_time=None):
+        """
+        Get OHLCV candles for any of 80 tracked symbols in Hyperliquid-compatible format.
+
+        80 symbols tracked including majors, DeFi, L2s, and memes.
+        Use get_candle_symbols() to see full list.
+
+        Categories:
+            - Major: BTC, ETH, SOL, XRP, DOGE, LTC, ADA, DOT, LINK, AVAX, BNB...
+            - DeFi: AAVE, UNI, CRV, LDO, PENDLE, JUP, MORPHO, ONDO, ENA...
+            - L2/Alt L1: ARB, OP, SUI, SEI, APT, NEAR, TON, TIA, MOVE, BERA...
+            - Memes: HYPE, FARTCOIN, PUMP, WIF, POPCAT, PENGU, TRUMP...
 
         Args:
-            coin: Symbol (BTC, ETH, HYPE, SOL, XRP)
-            interval: Candle interval (1m, 5m, 15m, 1h, 4h, 1d)
+            coin: Any tracked symbol (use get_candle_symbols() for full list)
+            interval: Candle interval - 1m, 5m, 15m, 1h, 4h, 1d (default: 5m)
             start_time: Start timestamp in ms (optional)
             end_time: End timestamp in ms (optional)
 
@@ -464,7 +505,7 @@ class MoonDevAPI:
                     "t": 1767787200000,    # Open time (ms)
                     "T": 1767790799999,    # Close time (ms)
                     "s": "BTC",            # Symbol
-                    "i": "1h",             # Interval
+                    "i": "5m",             # Interval
                     "o": "92194.5",        # Open price
                     "h": "92232.5",        # High price
                     "l": "92049.5",        # Low price
