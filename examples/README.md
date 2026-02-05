@@ -29,7 +29,7 @@ Each file in this folder is a standalone Python script that demonstrates one sec
 | `19_market_data.py` | Market Data | All prices, orderbooks, account state - NO RATE LIMITS |
 | `20_hip3_liquidations.py` | HIP3 Liqs | Stocks, Commodities, Indices & FX liquidations |
 | `21_hip3_market_data.py` | HIP3 Data | OHLCV candles & tick data for 33 TradFi assets |
-| `22_position_snapshots.py` | Position Snapshots | **NEW!** Positions near liquidation - squeeze signals |
+| `24_position_snapshots.py` | Position Snapshots | **NEW!** Positions near liquidation - squeeze signals |
 
 ---
 
@@ -472,19 +472,19 @@ python examples/18_hlp_analytics.py
 - Timing analysis (best/worst hours, session profitability)
 - Delta-price correlation by coin
 
-### 22_position_snapshots.py - Position Snapshot Dashboard
+### 24_position_snapshots.py - Position Snapshot Dashboard
 
 Track positions near liquidation for squeeze and cascade signals:
 
 ```bash
 # Default: all symbols, last 24 hours
-python examples/22_position_snapshots.py
+python examples/24_position_snapshots.py
 
 # Specific symbol
-python examples/22_position_snapshots.py BTC
+python examples/24_position_snapshots.py BTC
 
 # Filter to positions very close to liquidation
-python examples/22_position_snapshots.py ETH --max-distance 5
+python examples/24_position_snapshots.py ETH --max-distance 5
 ```
 
 **Features:**

@@ -121,7 +121,7 @@ python examples/16_depositors.py          # All Hyperliquid depositors
 python examples/19_market_data.py         # Prices, orderbooks, accounts - NO RATE LIMITS!
 python examples/20_hip3_liquidations.py   # HIP3 liqs: stocks, commodities, indices, FX
 python examples/21_hip3_market_data.py    # HIP3 candles & ticks: TSLA, GOLD, EUR, etc.
-python examples/22_position_snapshots.py  # Positions near liquidation (BTC/ETH/SOL/XRP/HYPE)
+python examples/24_position_snapshots.py  # Positions near liquidation (BTC/ETH/SOL/XRP/HYPE)
 ```
 
 That's it. You're now seeing what Wall Street sees.
@@ -155,7 +155,7 @@ Every example is a standalone Python script with beautiful terminal output. Run 
 | `19_market_data.py` | All prices, orderbooks, account state - NO RATE LIMITS |
 | `20_hip3_liquidations.py` | HIP3 liquidations - stocks, commodities, indices, FX |
 | `21_hip3_market_data.py` | HIP3 OHLCV candles & tick data for 33 TradFi assets |
-| `22_position_snapshots.py` | **NEW!** Positions within 15% of liquidation - squeeze signals |
+| `24_position_snapshots.py` | **NEW!** Positions within 15% of liquidation - squeeze signals |
 
 See the [examples/README.md](examples/README.md) for the API reference, or visit **https://moondev.com/docs** for the full documentation.
 
