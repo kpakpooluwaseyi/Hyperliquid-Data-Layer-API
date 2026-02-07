@@ -29,7 +29,8 @@ Each file in this folder is a standalone Python script that demonstrates one sec
 | `19_market_data.py` | Market Data | All prices, orderbooks, account state - NO RATE LIMITS |
 | `20_hip3_liquidations.py` | HIP3 Liqs | Stocks, Commodities, Indices & FX liquidations |
 | `21_hip3_market_data.py` | HIP3 Data | OHLCV candles & tick data for 33 TradFi assets |
-| `24_position_snapshots.py` | Position Snapshots | **NEW!** Positions near liquidation - squeeze signals |
+| `24_position_snapshots.py` | Position Snapshots | Positions near liquidation - squeeze signals |
+| `25_ai_chat.py` | AI Chat | **NEW!** OpenAI-compatible AI API - drop-in replacement |
 
 ---
 
@@ -234,13 +235,52 @@ Combines Hyperliquid, Binance, Bybit, OKX with Live + Archive architecture.
 | `GET /api/hlp/timing` | Hourly/session profitability analysis |
 | `GET /api/hlp/correlation` | Delta-price correlation by coin |
 
-### POSITION SNAPSHOTS (NEW!)
+### AI CHAT API (NEW!)
+
+OpenAI-compatible drop-in replacement. No need for OpenAI or Anthropic API keys!
+
+**Base URL:** `https://api.moondev.com/api/ai`
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/ai/v1/chat/completions` | OpenAI-compatible chat completions |
+| `POST /api/ai/chat` | Simple chat endpoint |
+| `GET /api/ai/health` | Health check |
+
+**OpenAI SDK Drop-in (just change base_url!):**
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.moondev.com/api/ai/v1",
+    api_key="YOUR_MOONDEV_API_KEY"
+)
+
+response = client.chat.completions.create(
+    model="moondev-ai",
+    messages=[{"role": "user", "content": "What is Hyperliquid?"}],
+    max_tokens=500
+)
+print(response.choices[0].message.content)
+```
+
+**cURL:**
+```bash
+curl -X POST "https://api.moondev.com/api/ai/v1/chat/completions" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_MOONDEV_API_KEY" \
+  -d '{"messages":[{"role":"user","content":"Who is Moon Dev?"}],"max_tokens":500}'
+```
+
+Full docs: https://moondev.com/docs
+
+### POSITION SNAPSHOTS
 
 Track positions within 15% of liquidation on HyperLiquid. Updated every 1 minute.
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /api/position_snapshots/{symbol}` | Historical snapshots for BTC, ETH, SOL, XRP, HYPE |
+| `GET /api/position_snapshots/symbol/{symbol}` | Historical snapshots for BTC, ETH, SOL, XRP, HYPE |
 | `GET /api/position_snapshots/stats` | Aggregate statistics for all tracked symbols |
 
 **Snapshot Parameters:**
@@ -349,10 +389,21 @@ market_maker = api.get_hlp_market_maker()            # Strategy B (BTC/ETH/SOL)
 timing = api.get_hlp_timing()                        # Hourly/session profitability
 correlation = api.get_hlp_correlation()              # Delta-price correlation
 
-# === POSITION SNAPSHOTS (NEW!) ===
+# === POSITION SNAPSHOTS ===
 btc_snaps = api.get_position_snapshots("BTC", hours=24)           # BTC positions near liq
 eth_risky = api.get_position_snapshots("ETH", max_distance_pct=5) # ETH <5% from liq
 stats = api.get_position_snapshot_stats(hours=12)                 # Aggregate stats
+
+# === AI CHAT API (NEW!) ===
+# Use OpenAI SDK as drop-in replacement:
+from openai import OpenAI
+client = OpenAI(base_url="https://api.moondev.com/api/ai/v1", api_key="YOUR_KEY")
+response = client.chat.completions.create(
+    model="moondev-ai",
+    messages=[{"role": "user", "content": "Analyze BTC sentiment"}],
+    max_tokens=500
+)
+print(response.choices[0].message.content)
 ```
 
 ---
@@ -501,6 +552,28 @@ python examples/24_position_snapshots.py ETH --max-distance 5
 - Spot short/long squeeze setups
 - Monitor at-risk whale positions
 - Track liquidation pressure building on specific symbols
+
+### 25_ai_chat.py - AI Chat API Dashboard
+
+Use Moon Dev's AI as an OpenAI drop-in replacement:
+
+```bash
+python examples/25_ai_chat.py
+```
+
+**Features:**
+- OpenAI SDK compatible (just change base_url)
+- Simple chat endpoint for quick queries
+- No need for OpenAI or Anthropic API keys
+- Works with any OpenAI-compatible library
+
+**Use Cases:**
+- Trading analysis and insights
+- Market sentiment interpretation
+- Strategy brainstorming
+- Any AI chat needs without extra API keys
+
+Full documentation: https://moondev.com/docs
 
 ---
 

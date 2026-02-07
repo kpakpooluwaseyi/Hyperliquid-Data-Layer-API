@@ -377,7 +377,7 @@ class MoonDevAPI:
             params += f"&max_distance_pct={max_distance_pct}"
         if side is not None:
             params += f"&side={side}"
-        response = self._get(f"/api/position_snapshots/{symbol}{params}")
+        response = self._get(f"/api/position_snapshots/symbol/{symbol}{params}")
         return response.json()
 
     def get_position_snapshot_stats(self, hours=24):

@@ -207,7 +207,7 @@ def display_top_at_risk(positions):
 def display_symbol_snapshots(api, symbol, hours=24, max_distance=None):
     """Display position snapshots for a specific symbol"""
     console.print(Panel(
-        f"[bold cyan]{symbol} POSITION SNAPSHOTS ({hours}H)[/bold cyan]  [dim cyan]GET https://api.moondev.com/api/position_snapshots/{symbol}[/dim cyan]",
+        f"[bold cyan]{symbol} POSITION SNAPSHOTS ({hours}H)[/bold cyan]  [dim cyan]GET https://api.moondev.com/api/position_snapshots/symbol/{symbol}[/dim cyan]",
         border_style="cyan",
         padding=(0, 1)
     ))

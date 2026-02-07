@@ -89,6 +89,7 @@ This data layer gives you access to everything Wall Street kept hidden:
 | **Fills (NEW!)** | Trade fills in Hyperliquid-compatible format - drop-in replacement |
 | **Candles (80 symbols!)** | OHLCV candles (1m-1d) for 80 symbols: majors, DeFi, memes (FARTCOIN, TRUMP...) |
 | **Tick Data (80 symbols!)** | Raw price ticks with custom time windows for any tracked symbol |
+| **AI Chat API (NEW!)** | OpenAI-compatible drop-in replacement - no extra API keys needed |
 
 This is the data that used to cost hedge funds millions of dollars. Now it's accessible to anyone with an API key.
 
@@ -122,6 +123,7 @@ python examples/19_market_data.py         # Prices, orderbooks, accounts - NO RA
 python examples/20_hip3_liquidations.py   # HIP3 liqs: stocks, commodities, indices, FX
 python examples/21_hip3_market_data.py    # HIP3 candles & ticks: TSLA, GOLD, EUR, etc.
 python examples/24_position_snapshots.py  # Positions near liquidation (BTC/ETH/SOL/XRP/HYPE)
+python examples/25_ai_chat.py             # AI Chat API - drop-in OpenAI replacement
 ```
 
 That's it. You're now seeing what Wall Street sees.
@@ -155,7 +157,8 @@ Every example is a standalone Python script with beautiful terminal output. Run 
 | `19_market_data.py` | All prices, orderbooks, account state - NO RATE LIMITS |
 | `20_hip3_liquidations.py` | HIP3 liquidations - stocks, commodities, indices, FX |
 | `21_hip3_market_data.py` | HIP3 OHLCV candles & tick data for 33 TradFi assets |
-| `24_position_snapshots.py` | **NEW!** Positions within 15% of liquidation - squeeze signals |
+| `24_position_snapshots.py` | Positions within 15% of liquidation - squeeze signals |
+| `25_ai_chat.py` | **NEW!** AI Chat API - OpenAI-compatible drop-in replacement |
 
 See the [examples/README.md](examples/README.md) for the API reference, or visit **https://moondev.com/docs** for the full documentation.
 
@@ -340,7 +343,7 @@ Track positions close to liquidation on HyperLiquid. Perfect for identifying squ
 ### Get Historical Snapshots
 
 ```
-GET /api/position_snapshots/{symbol}
+GET /api/position_snapshots/symbol/{symbol}
 ```
 
 **Parameters:**
